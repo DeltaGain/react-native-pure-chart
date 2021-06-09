@@ -11,12 +11,8 @@ export default class ColumnChartItem extends Component {
       if (seriesIndex === (seriesCount - 1)) {
         lastElementMarginRight = this.props.defaultMargin
       }
-
-      // DeltaGain allow negative colours
+      
       let colour = this.props.seriesArray[seriesIndex].seriesColor
-      if (this.props.seriesArray[seriesIndex].data[this.props.dataIndex]['y'] < 0) {
-        colour = '#E74C3C'
-      }
       
       renders.push(
         <View key={seriesIndex} style={[styles.bar, {

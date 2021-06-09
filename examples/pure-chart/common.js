@@ -258,16 +258,19 @@ export const getGuideArray = (min, max, height, numberOfPoints = 5) => {
     x = 10 * x / first
   }
   
+  // DeltaGain : Determine delta
+  let d = min * height
+
   for (let i = 1; i < numberOfPoints + 1; i++) {
     let v = x / numberOfPoints * i
 
-    // DeltaGain : Hack to subtract min (largest negative value)
-    arr.push([((v-min) + postfix), v * temp / max * height, 1 * temp / max * height])
+    // DeltaGain : Hack to delta
+    arr.push([((v) + postfix), d + (v * temp / max * height), d+(1 * temp / max * height)])
   }
 
-  // DeltaGain : Hack to add in 0 line
+  // DeltaGain : Hack to add in 0 line (with delta)
   let v = 0
-  arr.push(["", v * temp / max * height, 1 * temp / max * height])
+  arr.push(["", d+(v * temp / max * height), d+(1 * temp / max * height)])
 
   console.log(arr)
   return arr
