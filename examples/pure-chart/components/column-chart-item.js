@@ -11,13 +11,24 @@ export default class ColumnChartItem extends Component {
       if (seriesIndex === (seriesCount - 1)) {
         lastElementMarginRight = this.props.defaultMargin
       }
+
+      // DeltaGain allow negative colours
+      let colour = this.props.seriesArray[seriesIndex].seriesColor
+      if (this.props.seriesArray[seriesIndex].data[this.props.dataIndex]['y'] < 0) {
+        colour = '#E74C3C'
+      }
+      
       renders.push(
         <View key={seriesIndex} style={[styles.bar, {
           width: this.props.defaultWidth / seriesCount,
           height: this.props.seriesArray[seriesIndex].data[this.props.dataIndex]['ratioY'],
+
+          // DeltaGain : Hack to shift values
+          marginBottom: this.props.seriesArray[seriesIndex].data[this.props.dataIndex]['offset'],
+
           marginRight: lastElementMarginRight,
-          backgroundColor: this.props.seriesArray[seriesIndex].seriesColor,
-          borderColor: this.props.isSelected ? this.props.highlightColor : this.props.defaultBorderColor
+          backgroundColor: colour,
+          borderColor: this.props.isSelected ? this.props.highlightColor : '#FFFFFF'
         }]} />
       )
     }

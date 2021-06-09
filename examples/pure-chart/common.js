@@ -59,9 +59,27 @@ function getMaxValue (data) {
     }
   })
 
-  if (values.length === 0) return 0
+  if (values.length === 0){
+    return {
+    max: 0,
+    min: 0
+  }}
 
-  return Math.max.apply(null, values)
+  // DeltaGain : Hack to ensure max [ratio] allows for negatives
+  let min = Math.min.apply(null, values)
+  let max = Math.max.apply(null, values)
+
+  // if negative, get abs, otherwise 0
+  min = Math.abs(Math.min(min, 0))
+
+  // now ensure range (max) accounts for both positive and negative
+  max = max + min
+
+  // DeltaGain : Hack to ensure min is returned (needed for offset)
+  return {
+    max: max,
+    min: min
+  }
 }
 
 export const initData = (dataProp, height, gap, numberOfPoints = 5) => {
@@ -74,12 +92,17 @@ export const initData = (dataProp, height, gap, numberOfPoints = 5) => {
     }
   }
 
-  max = Math.max(getMaxValue(dataProp))
-  guideArray = getGuideArray(max, height, numberOfPoints)
+  // DeltaGain : Hack to allow both min and max
+  let minmax = getMaxValue(dataProp)
+  let min = minmax.min
+  max = minmax.max
+
+  // DeltaGain : Hack to allow both min and max
+  guideArray = getGuideArray(min, max, height, numberOfPoints)
 
   dataProp = flattenData(dataProp)
 
-  sortedData = refineData(dataProp, max, height, gap)
+  sortedData = refineData(dataProp, min, max, height, gap)
   return {
     sortedData: sortedData,
     max: max,
@@ -93,7 +116,7 @@ export const initData = (dataProp, height, gap, numberOfPoints = 5) => {
   }
 }
 
-export const refineData = (flattenData, max, height, gap) => {
+export const refineData = (flattenData, min, max, height, gap) => {
   let result = []
 
   flattenData.map((series) => {
@@ -143,10 +166,26 @@ export const refineData = (flattenData, max, height, gap) => {
           } */
         }
         if (typeof dataProp[i].y === 'number' && dataProp[i].x) {
+          // DeltaGain : Shift eveyrthing by the largest negative
+          let offset = min
+          if (dataProp[i].y < 0) {
+            offset = min - Math.abs(dataProp[i].y)
+          }
+          // DeltaGain : Logging
+          //console.log('--')
+          //console.log(dataProp[i].x)
+          //console.log(dataProp[i].y)
+          //console.log(dataProp[i].y / maxClone * height)
+          //console.log(offset)
+          //console.log('--')
+
           objectTypeCount++
           dataObject = {
             gap: i * gap,
-            ratioY: dataProp[i].y / maxClone * height,
+            // DeltaGain : Allow negatives
+            ratioY: Math.abs(dataProp[i].y) / maxClone * height,
+            // DeltaGain : Allow negatives
+            offset: offset / maxClone * height,
             x: dataProp[i].x,
             y: dataProp[i].y,
             isEmpty: isEmpty
@@ -177,8 +216,9 @@ export const refineData = (flattenData, max, height, gap) => {
   return result
 }
 
-export const getGuideArray = (max, height, numberOfPoints = 5) => {
-  let x = parseInt(max)
+export const getGuideArray = (min, max, height, numberOfPoints = 5) => {
+  // DeltaGain : Ensure range considers both positive and negative
+  let x = Math.max(parseInt(max), parseInt(min))
 
   let arr = []
   let length
@@ -217,12 +257,19 @@ export const getGuideArray = (max, height, numberOfPoints = 5) => {
   } else {
     x = 10 * x / first
   }
-
+  
   for (let i = 1; i < numberOfPoints + 1; i++) {
     let v = x / numberOfPoints * i
-    arr.push([v + postfix, v * temp / max * height, 1 * temp / max * height])
+
+    // DeltaGain : Hack to subtract min (largest negative value)
+    arr.push([((v-min) + postfix), v * temp / max * height, 1 * temp / max * height])
   }
 
+  // DeltaGain : Hack to add in 0 line
+  let v = 0
+  arr.push(["", v * temp / max * height, 1 * temp / max * height])
+
+  console.log(arr)
   return arr
 }
 
@@ -240,10 +287,10 @@ export const drawYAxis = (color = '#e0e0e0') => {
   )
 }
 
-export const drawYAxisLabels = (arr, height, minValue, color = '#000000', symbol='') => {
+export const drawYAxisLabels = (arr, height, minValue, color = '#000000') => {
   return (
     <View style={{
-      width: 33 + 5*symbol.length,
+      width: 33,
       height: height,
       justifyContent: 'flex-end',
       alignItems: 'flex-end',
@@ -261,7 +308,7 @@ export const drawYAxisLabels = (arr, height, minValue, color = '#000000', symbol
           <Text style={{fontSize: 11}}>0</Text>
         </View>
       ) : arr.map((v, i) => {
-        if (v[1] > height-5) return null
+        if (v[1] > height) return null
         return (
           <View
             key={'guide' + i}
@@ -269,7 +316,7 @@ export const drawYAxisLabels = (arr, height, minValue, color = '#000000', symbol
               bottom: v[1] - 5,
               position: 'absolute'
             }}>
-            <Text style={{fontSize: 11, color: color}}>{v[0] + ' ' + symbol}</Text>
+            <Text style={{fontSize: 11, color: color}}>{v[0]}</Text>
           </View>
         )
       })}
